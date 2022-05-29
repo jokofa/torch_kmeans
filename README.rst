@@ -56,7 +56,7 @@ Moreover, they also provide a `scikit-learn <https://scikit-learn.org/>`_ style 
 
 functions.
 
--> `view official documentation <https://readthedocs.org/>`_
+-> `view official documentation <https://torch-kmeans.readthedocs.io/en/latest/>`_
 
 
 Highlights
