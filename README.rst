@@ -42,9 +42,13 @@ as well as its soft and constrained variants.
 All algorithms are completely implemented as `PyTorch <https://pytorch.org/>`_ modules
 and can be easily incorporated in a PyTorch pipeline or model.
 Therefore, they support execution on GPU as well as working on (mini-)batches of data.
-Moreover, they also provide a `scikit-learn <https://scikit-learn.org/>`_ style interface
-featuring
+Moreover, they also provide a `scikit-learn <https://scikit-learn.org/>`_ style interface featuring
+
+.. code-block:: python
+
    model.fit(), model.predict() and model.fit_predict()
+
+
 functions.
 
 -> `view official documentation <https://readthedocs.org/>`_
