@@ -11,13 +11,14 @@ __all__ = ["ClusterResult", "group_by_label_mean", "first_nonzero", "rm_kwargs"]
 class ClusterResult(NamedTuple):
     """Named and typed result tuple for kmeans algorithms
 
-    - labels: label for each sample in x
-    - centers: corresponding coordinates of cluster centers
-    - inertia: sum of squared distances of samples to their closest cluster center
-    - x_org: original x
-    - x_norm: normalized x which was used for cluster centers and labels
-    - k: number of clusters
-    - soft_assignment: assignment probabilities of soft kmeans
+    Args:
+        labels: label for each sample in x
+        centers: corresponding coordinates of cluster centers
+        inertia: sum of squared distances of samples to their closest cluster center
+        x_org: original x
+        x_norm: normalized x which was used for cluster centers and labels
+        k: number of clusters
+        soft_assignment: assignment probabilities of soft kmeans
     """
 
     labels: LongTensor

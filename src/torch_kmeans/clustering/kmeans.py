@@ -26,8 +26,9 @@ class KMeans(nn.Module):
     batched training (e.g. for neural networks).
 
     Partly based on ideas from:
-        - https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/cluster/_kmeans.py     # noqa
+        - https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html
         - https://github.com/overshiki/kmeans_pytorch
+
 
     Args:
             init_method: Method to initialize cluster centers.
