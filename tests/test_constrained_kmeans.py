@@ -124,18 +124,25 @@ def test_input_data_raise2():
     ],
 )
 def test_result(key, val):
+    K = 2
     kwargs = deepcopy(DEFAULT_PARAMS)
     kwargs["max_iter"] = 300
     kwargs["tol"] = 1e-6
     kwargs[key] = val
     torch.manual_seed(123)
-    x, y, k, w = get_data(bs=3, n=20, d=2, k=2, add_noise=False, seed=123)
+    x, y, k, w = get_data(bs=3, n=20, d=2, k=K, add_noise=False, seed=123)
     model = ConstrainedKMeans(**kwargs)
     res = model(x, k, weights=w)
+    # check labels
     for y_, lbl in zip(y, res.labels):
         assert (y_.view(-1) == lbl.view(-1)).sum() <= 1 or (
             y_.view(-1) != lbl.view(-1)
         ).sum() <= 1
+    # check constraints
+    for i in range(K):
+        msk = y == i
+        w_sum = w[msk].sum()
+        assert w_sum <= 1
 
 
 def test_topk():
@@ -200,6 +207,3 @@ def test_CUDA():
 
     for i1, i2 in zip(res1.inertia, res2.inertia.cpu()):
         assert torch.allclose(i1, i2)
-
-
-# TODO: topk init

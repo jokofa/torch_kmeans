@@ -1,5 +1,4 @@
-.. These are examples of badges you might want to add to your README:
-   please update the URLs accordingly
+.. badges
 
     .. image:: https://api.cirrus-ci.com/github/<USER>/torch_kmeans.svg?branch=main
         :alt: Built Status
@@ -22,6 +21,11 @@
     .. image:: https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Twitter
         :alt: Twitter
         :target: https://twitter.com/torch_kmeans
+
+   .. image:: https://coveralls.io/repos/github/jokofa/torch_kmeans/badge.svg?branch=master
+      :alt: Coveralls
+      :target: https://coveralls.io/github/jokofa/torch_kmeans?branch=master
+
 
 .. image:: ./torch_kmeans-logo.png
       :align: center
@@ -58,10 +62,11 @@ Highlights
 ===========
 - Fully implemented in PyTorch.
 - GPU support like native PyTorch.
-- Works with mini-batches of samples
+- PyTorch script JIT compiled for most performance sensitive parts.
+- Works with mini-batches of samples:
    - each instance can have a different number of clusters.
-- Constrained Kmeans works with cluster constraints like
-   - a limit of samples per cluster or,
+- Constrained Kmeans works with cluster constraints like:
+   - a max number of samples per cluster or,
    - a maximum weight per cluster, where each sample has an associated weight.
 - SoftKMeans is a fully differentiable clustering procedure and
   can readily be used in a PyTorch neural network model which requires backpropagation.
@@ -124,4 +129,6 @@ or
    print(labels)
 
 
-You can find more `detailed example notebooks here <./examples/>`_.
+Examples
+============
+You can find more examples and usage in the `detailed example notebooks <./examples/>`_.
