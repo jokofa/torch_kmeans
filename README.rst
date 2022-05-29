@@ -27,9 +27,10 @@
       :target: https://coveralls.io/github/jokofa/torch_kmeans?branch=master
 
 
-.. image:: ./torch_kmeans-logo.png
+.. image:: torch_kmeans-logo.png
       :align: center
       :alt: torch_kmeans-logo
+      :target: ./torch_kmeans-logo.png
 
 |
 
@@ -73,7 +74,7 @@ Highlights
 - Unit tested against the scikit-learn KMeans implementation.
 - GPU execution enables very fast computation even for
   large batch size or very high dimensional feature spaces
-  (see `speed comparison <./examples/notebooks/speed_comparison.ipynb>`_)
+  (see `speed comparison <https://github.com/jokofa/torch_kmeans/tree/master/examples/notebooks/speed_comparison.ipynb>`_)
 
 Installation
 =============
@@ -131,4 +132,5 @@ or
 
 Examples
 ============
-You can find more examples and usage in the `detailed example notebooks <./examples/>`_.
+You can find more examples and usage in the
+`detailed example notebooks <https://github.com/jokofa/torch_kmeans/tree/master/examples>`_.

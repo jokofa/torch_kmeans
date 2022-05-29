@@ -3,8 +3,8 @@ from .clustering import ConstrainedKMeans, KMeans, SoftKMeans
 from .utils import ClusterResult, CosineSimilarity, DotProductSimilarity, LpDistance
 
 __all__ = [
-    "ConstrainedKMeans",
     "KMeans",
+    "ConstrainedKMeans",
     "SoftKMeans",
     "KNN",
     "LpDistance",
