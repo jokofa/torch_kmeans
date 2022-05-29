@@ -73,7 +73,7 @@ Highlights
 - Unit tested against the scikit-learn KMeans implementation.
 - GPU execution enables very fast computation even for
   large batch size or very high dimensional feature spaces
-  (see `speed comparison <./examples/speed_comparison.ipynb>`_)
+  (see `speed comparison <./examples/notebooks/speed_comparison.ipynb>`_)
 
 Installation
 =============
