@@ -1,31 +1,31 @@
 .. badges
 
-    .. image:: https://api.cirrus-ci.com/github/<USER>/torch_kmeans.svg?branch=main
-        :alt: Built Status
-        :target: https://cirrus-ci.com/github/<USER>/torch_kmeans
-    .. image:: https://readthedocs.org/projects/torch_kmeans/badge/?version=latest
-        :alt: ReadTheDocs
-        :target: https://torch_kmeans.readthedocs.io/en/stable/
-    .. image:: https://img.shields.io/coveralls/github/<USER>/torch_kmeans/main.svg
-        :alt: Coveralls
-        :target: https://coveralls.io/r/<USER>/torch_kmeans
-    .. image:: https://img.shields.io/pypi/v/torch_kmeans.svg
-        :alt: PyPI-Server
-        :target: https://pypi.org/project/torch_kmeans/
     .. image:: https://img.shields.io/conda/vn/conda-forge/torch_kmeans.svg
         :alt: Conda-Forge
         :target: https://anaconda.org/conda-forge/torch_kmeans
     .. image:: https://pepy.tech/badge/torch_kmeans/month
         :alt: Monthly Downloads
         :target: https://pepy.tech/project/torch_kmeans
-    .. image:: https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Twitter
-        :alt: Twitter
-        :target: https://twitter.com/torch_kmeans
-
-   .. image:: https://coveralls.io/repos/github/jokofa/torch_kmeans/badge.svg?branch=master
+    .. image:: https://coveralls.io/repos/github/jokofa/torch_kmeans/badge.svg?branch=master
       :alt: Coveralls
       :target: https://coveralls.io/github/jokofa/torch_kmeans?branch=master
 
+
+.. image:: https://img.shields.io/pypi/pyversions/torch-kmeans
+    :alt: pyversions
+    :target: https://img.shields.io/pypi/pyversions/torch-kmeans
+
+.. image:: https://img.shields.io/pypi/wheel/torch-kmeans
+    :alt: wheel
+    :target: https://img.shields.io/pypi/wheel/torch-kmeans
+
+.. image:: https://img.shields.io/pypi/v/torch-kmeans.svg
+    :alt: Latest Version
+    :target: https://pypi.org/project/torch_kmeans/
+
+.. image:: https://readthedocs.org/projects/torch_kmeans/badge/?version=latest
+    :alt: ReadTheDocs
+    :target: https://torch_kmeans.readthedocs.io/en/stable/
 
 .. image:: torch_kmeans-logo.png
       :align: center

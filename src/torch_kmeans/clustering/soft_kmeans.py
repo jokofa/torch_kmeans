@@ -36,7 +36,7 @@ class SoftKMeans(KMeans):
                     declare convergence. (default: 1e-4)
         n_clusters: Default number of clusters to use if not provided in call
                 (optional, default: 8).
-        verbose: Verbosity flag to print additional info (default: False).
+        verbose: Verbosity flag to print additional info (default: True).
         seed: Seed to fix random state for randomized center inits
                 (default: True).
         temp: temperature for soft cluster assignments (default: 5.0).

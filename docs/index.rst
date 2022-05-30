@@ -63,15 +63,23 @@ Contents
        :maxdepth: 2
        Contributions & Help <contributing>
        Changelog <changelog>
+       Module Reference <api/modules>
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    Overview <readme>
    License <license>
    Authors <authors>
-   Module Reference <api/modules>
+
+.. toctree::
+   :glob:
+   :maxdepth: 2
+   :caption: Package Reference
+
+   api/torch_kmeans.clustering
+   api/torch_kmeans.utils
 
 
 Indices and tables

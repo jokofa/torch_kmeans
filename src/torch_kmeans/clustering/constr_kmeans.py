@@ -39,7 +39,7 @@ class ConstrainedKMeans(KMeans):
                     declare convergence. (default: 1e-4)
         n_clusters: Default number of clusters to use if not provided in call
                 (optional, default: 8).
-        verbose: Verbosity flag to print additional info (default: False).
+        verbose: Verbosity flag to print additional info (default: True).
         seed: Seed to fix random state for randomized center inits
                 (default: True).
         n_priority_trials_before_fall_back: Number of trials trying to assign

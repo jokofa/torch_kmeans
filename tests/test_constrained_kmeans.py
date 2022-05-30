@@ -1,12 +1,13 @@
 #
 from copy import deepcopy
+from typing import Optional, Tuple
 
+import numpy as np
 import pytest
 import torch
+from sklearn.datasets import make_blobs
 from torch_kmeans import ConstrainedKMeans, CosineSimilarity
 from torch_kmeans.clustering.constr_kmeans import InfeasibilityError
-
-from tests.utils import get_data
 
 DEFAULT_PARAMS = {
     "init_method": "rnd",
@@ -17,6 +18,55 @@ DEFAULT_PARAMS = {
     "n_clusters": 8,
     "n_priority_trials_before_fall_back": 5,
 }
+
+
+def get_data(
+    bs: int = 3,
+    n: int = 20,
+    d: int = 2,
+    k: Optional[int] = 4,
+    different_k: bool = False,
+    k_lims: Optional[Tuple[int, int]] = (2, 5),
+    add_noise: bool = True,
+    fp_dtype=torch.float32,
+    seed: int = 42,
+):
+    torch.manual_seed(seed)
+    if different_k:
+        a, b = k_lims
+        k = torch.randint(low=a, high=b, size=(bs,)).long()
+    else:
+        k = torch.empty(bs).fill_(k).long()
+
+    # generate pseudo clustering data
+    x, y = [], []
+    for i, k_ in enumerate(k.numpy()):
+        x_, y_ = make_blobs(
+            n_samples=n, centers=k_, n_features=d, random_state=seed + i
+        )
+        x.append(x_)
+        y.append(y_)
+    x = torch.from_numpy(np.stack(x, axis=0))
+    y = torch.from_numpy(np.stack(y, axis=0))
+    if add_noise:
+        x += torch.randn(x.size())
+    # sample weights
+    weights = torch.abs(torch.randn(size=y.size()))
+    # normalize weights per cluster given by label
+    norm_weights = torch.empty(y.size())
+    for i in range(bs):
+        w = weights[i]
+        y_ = y[i]
+        unq = len(torch.unique(y_))
+        nw = torch.empty(y_.size())
+        for j in range(unq):
+            msk = y_ == j
+            w_ = w[msk]
+            nw[msk] = w_ / (w_.sum() * 1.15)
+        norm_weights[i] = nw
+    assert (norm_weights.sum(dim=-1).long() <= k).all()
+
+    return x.to(fp_dtype), y, k, norm_weights.to(dtype=fp_dtype)
 
 
 @pytest.mark.parametrize(
@@ -124,13 +174,14 @@ def test_input_data_raise2():
     ],
 )
 def test_result(key, val):
+    BS = 3
     K = 2
     kwargs = deepcopy(DEFAULT_PARAMS)
     kwargs["max_iter"] = 300
     kwargs["tol"] = 1e-6
     kwargs[key] = val
     torch.manual_seed(123)
-    x, y, k, w = get_data(bs=3, n=20, d=2, k=K, add_noise=False, seed=123)
+    x, y, k, w = get_data(bs=BS, n=20, d=2, k=K, add_noise=False, seed=123)
     model = ConstrainedKMeans(**kwargs)
     res = model(x, k, weights=w)
     # check labels
@@ -140,9 +191,11 @@ def test_result(key, val):
         ).sum() <= 1
     # check constraints
     for i in range(K):
-        msk = y == i
-        w_sum = w[msk].sum()
-        assert w_sum <= 1
+        for b_ in range(BS):
+            msk = res.labels[b_] == i
+            w_ = w[b_]
+            w_sum = w_[msk].sum()
+            assert w_sum <= 1
 
 
 def test_topk():

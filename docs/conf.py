@@ -10,6 +10,7 @@
 import os
 import sys
 import shutil
+import sphinx_rtd_theme
 
 # -- Path setup --------------------------------------------------------------
 
@@ -19,8 +20,6 @@ __location__ = os.path.dirname(__file__)
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.join(__location__, "../src"))
-#sys.path.append(os.path.join(__location__, ".."))
-#sys.path.append(os.path.join(__location__, "../src/torch_kmeans"))
 
 # -- Run sphinx-apidoc -------------------------------------------------------
 # This hack is necessary since RTD does not issue `sphinx-apidoc` before running
@@ -45,7 +44,7 @@ except FileNotFoundError:
 try:
     import sphinx
 
-    cmd_line = f"sphinx-apidoc --implicit-namespaces -f -o {output_dir} {module_dir}"
+    cmd_line = f"sphinx-apidoc --implicit-namespaces -f -o {output_dir} {module_dir} -e -E -M -d 2"
 
     args = cmd_line.split(" ")
     if tuple(sphinx.__version__.split(".")) >= ("1", "7"):
@@ -55,6 +54,7 @@ try:
     apidoc.main(args)
 except Exception as e:
     print("Running `sphinx-apidoc` failed!\n{}".format(e))
+
 
 # -- General configuration ---------------------------------------------------
 
@@ -75,6 +75,8 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
 ]
+
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -155,14 +157,16 @@ todo_emit_warnings = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = "alabaster"
+html_theme = "sphinx_rtd_theme" #"alabaster"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "sidebar_width": "300px",
-    "page_width": "1200px"
+    #"sidebar_width": "300px",
+    #"page_width": "1200px"
+    "titles_only": True,
+    "logo_only": True
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
