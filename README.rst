@@ -61,7 +61,7 @@ functions.
 
 Highlights
 ===========
-- Fully implemented in PyTorch.
+- Fully implemented in PyTorch. (PyTorch and Numpy are the only package dependencies!)
 - GPU support like native PyTorch.
 - PyTorch script JIT compiled for most performance sensitive parts.
 - Works with mini-batches of samples:
