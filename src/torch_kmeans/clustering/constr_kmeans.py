@@ -1,5 +1,6 @@
 #
 from typing import Any, Optional, Tuple, Union
+from warnings import warn
 
 import torch
 from torch import LongTensor, Tensor
@@ -41,7 +42,7 @@ class ConstrainedKMeans(KMeans):
                 (optional, default: 8).
         verbose: Verbosity flag to print additional info (default: True).
         seed: Seed to fix random state for randomized center inits
-                (default: True).
+                (default: 123).
         n_priority_trials_before_fall_back: Number of trials trying to assign
                                             samples to constrained clusters based
                                             on priority values before falling back
@@ -49,6 +50,8 @@ class ConstrainedKMeans(KMeans):
                                             weight to a cluster which can still
                                             accommodate it or the dummy cluster
                                             otherwise. (default: 5)
+        strict_feasibility: if set to False, will only display a warning
+                            instead of raising an error (default: True)
         **kwargs: additional key word arguments for the distance function.
 
     """
@@ -68,6 +71,7 @@ class ConstrainedKMeans(KMeans):
         verbose: bool = True,
         seed: Optional[int] = 123,
         n_priority_trials_before_fall_back: int = 5,
+        strict_feasibility: bool = True,
         **kwargs,
     ):
         kwargs = rm_kwargs(kwargs, ["normalize"])
@@ -85,6 +89,7 @@ class ConstrainedKMeans(KMeans):
             **kwargs,
         )
         self.n_trials = n_priority_trials_before_fall_back
+        self.strict_feasibility = strict_feasibility
         # check
         if self.n_trials <= 0:
             raise ValueError(f"n_trials should be > 0, " f"but got {self.n_trials}.")
@@ -263,12 +268,16 @@ class ConstrainedKMeans(KMeans):
             feasible = (c_assign >= 0).all(-1).any(-1)
             if not feasible.all():
                 inf_idx = (feasible == 0).nonzero().squeeze()
-                raise InfeasibilityError(
+                msg = (
                     f"No feasible assignment found for "
                     f"instance(s) with idx: {inf_idx}.\n"
                     f"Try to increase the number of clusters "
                     f"or loosen the constraints."
                 )
+                if self.strict_feasibility:
+                    raise InfeasibilityError(msg)
+                else:
+                    warn(msg)
             else:
                 # at least one init produced a feasible assignment
                 # replace infeasible inits with feasible dummies to compute inertia
