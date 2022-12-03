@@ -2,6 +2,7 @@
 from typing import Any, Optional, Tuple, Union
 from warnings import warn
 
+# import numpy as np
 import torch
 from torch import LongTensor, Tensor
 
@@ -28,7 +29,8 @@ class ConstrainedKMeans(KMeans):
 
 
     Args:
-        init_method: Method to initialize cluster centers: ['rnd', 'topk']
+        init_method: Method to initialize cluster centers:
+                        ['rnd', 'topk', 'k-means++', 'ckm++']
                         (default: 'rnd')
         num_init: Number of different initial starting configurations,
                     i.e. different sets of initial centers (default: 8).
@@ -50,13 +52,13 @@ class ConstrainedKMeans(KMeans):
                                             weight to a cluster which can still
                                             accommodate it or the dummy cluster
                                             otherwise. (default: 5)
-        strict_feasibility: if set to False, will only display a warning
+        raise_infeasible: if set to False, will only display a warning
                             instead of raising an error (default: True)
         **kwargs: additional key word arguments for the distance function.
 
     """
 
-    INIT_METHODS = ["rnd", "topk"]
+    INIT_METHODS = ["rnd", "k-means++", "topk", "ckm++"]
     NORM_METHODS = []
 
     def __init__(
@@ -71,7 +73,7 @@ class ConstrainedKMeans(KMeans):
         verbose: bool = True,
         seed: Optional[int] = 123,
         n_priority_trials_before_fall_back: int = 5,
-        strict_feasibility: bool = True,
+        raise_infeasible: bool = True,
         **kwargs,
     ):
         kwargs = rm_kwargs(kwargs, ["normalize"])
@@ -89,7 +91,7 @@ class ConstrainedKMeans(KMeans):
             **kwargs,
         )
         self.n_trials = n_priority_trials_before_fall_back
-        self.strict_feasibility = strict_feasibility
+        self.raise_infeasible = raise_infeasible
         # check
         if self.n_trials <= 0:
             raise ValueError(f"n_trials should be > 0, " f"but got {self.n_trials}.")
@@ -165,10 +167,12 @@ class ConstrainedKMeans(KMeans):
             return self._init_plus(x, k)
         elif self.init_method == "topk":
             return self._init_topk(x, k, **kwargs)
+        elif self.init_method == "ckm++":
+            return self._init_ckm_plus(x, k, **kwargs)
         else:
             raise ValueError(f"unknown initialization method: {self.init_method}.")
 
-    def _init_topk(self, x: Tensor, k: LongTensor, weights: Tensor, **kwargs):
+    def _init_topk(self, x: Tensor, k: LongTensor, weights: Tensor, **kwargs) -> Tensor:
         """Choose k nodes with largest weights as initial centers.
 
         Args:
@@ -192,6 +196,80 @@ class ConstrainedKMeans(KMeans):
         return x.gather(
             index=idx.view(bs, -1)[:, :, None].expand(bs, -1, d), dim=1
         ).view(bs, self.num_init, k_max, d)
+
+    def _init_ckm_plus(
+        self, x: Tensor, k: LongTensor, weights: Tensor, **kwargs
+    ) -> Tensor:
+        """Choose initial centers via adapted k-means++ method
+        which also considers the weights.
+
+        Args:
+            x: (BS, N, D)
+            k: (BS, )
+
+        Returns:
+            centers: (BS, num_init, k, D)
+
+        """
+        bs, n, d = x.size()
+        k_max = torch.max(k).cpu().item()
+
+        if self.seed is not None:
+            # make random init reproducible independent of current iteration,
+            # which otherwise would step and change the torch generator state
+            gen = torch.Generator(device=x.device)
+            gen.manual_seed(self.seed)
+        else:
+            gen = None
+
+        bsm = bs * self.num_init
+        bsm_idx = torch.arange(bsm, device=x.device)
+        centers = torch.empty((bsm, k_max, d), dtype=x.dtype, device=x.device)
+        weights = weights[:, None, :].expand(bs, self.num_init, n).reshape(bsm, n)
+
+        # TODO: implement selection of n local trials
+        #  (select center out of trials which minimizes inertia)
+        # n_local_trials = 2 + int(np.log(k_max))
+
+        # select first center randomly
+        assert n > self.num_init, (
+            f"Number of samples must be larger than <num_init> "
+            f"but got {n} <= {self.num_init}"
+        )
+        idx = torch.multinomial(
+            torch.empty((bs, n), device=x.device, dtype=x.dtype).fill_(1 / n),
+            num_samples=self.num_init,
+            replacement=False,
+            generator=gen,
+        )
+        centers[:, 0] = x.gather(index=idx[:, :, None].expand(-1, -1, d), dim=1).view(
+            -1, d
+        )
+        msk = torch.zeros((bsm, n, k_max), dtype=torch.bool, device=x.device)
+        msk[bsm_idx, idx.view(-1), 0] = True
+
+        # select the remaining k-1 centers
+        # The intuition behind this approach is that spreading out the
+        # k initial cluster centers is a good thing: the first cluster
+        # center is chosen uniformly at random from the data points that
+        # are being clustered, after which each subsequent cluster center
+        # is chosen from the remaining data points with probability
+        # proportional to its squared distance from the point's closest
+        # existing cluster center weighted by its weight.
+        for nc in range(1, k_max):
+            dist = self._pairwise_distance(
+                x, centers[:, :nc].view(bs, self.num_init, -1, d)
+            ).view(bsm, n, nc)
+            pot = weights[:, :, None].expand(bsm, n, nc) * dist**2
+            pot[msk[:, :, :nc]] = 0
+            pot = pot.min(dim=-1).values
+            idx = torch.multinomial(pot, 1, generator=gen).view(bs, self.num_init)
+            centers[:, nc] = x.gather(
+                index=idx[:, :, None].expand(-1, -1, d), dim=1
+            ).view(-1, d)
+            msk[bsm_idx, idx.view(-1), nc] = True
+
+        return centers.view(bs, self.num_init, k_max, d)
 
     def _get_kmask(self, k: Tensor, num_init: int = 1) -> Tuple[Tensor, Tensor]:
         """Compute mask of number of clusters k for centers of each instance."""
@@ -269,29 +347,31 @@ class ConstrainedKMeans(KMeans):
             if not feasible.all():
                 inf_idx = (feasible == 0).nonzero().squeeze()
                 msg = (
-                    f"No feasible assignment found for "
+                    f"No feasible assignment found for {len(inf_idx)} "
                     f"instance(s) with idx: {inf_idx}.\n"
-                    f"Try to increase the number of clusters "
-                    f"or loosen the constraints."
+                    f"(Try to increase the number of clusters "
+                    f"or loosen the constraints.)"
                 )
-                if self.strict_feasibility:
+                if self.raise_infeasible:
                     raise InfeasibilityError(msg)
                 else:
-                    warn(msg)
-            else:
-                # at least one init produced a feasible assignment
-                # replace infeasible inits with feasible dummies to compute inertia
-                feasible = (c_assign >= 0).all(-1)
-                valid, dummy_row_idx = first_nonzero(feasible)
-                assgn = (
-                    c_assign[torch.arange(bs, device=x.device), dummy_row_idx][
-                        :, None, :
-                    ]
-                    .expand(c_assign.size())
-                    .contiguous()
-                )
-                assgn[feasible] = c_assign[feasible]
-                c_assign = assgn
+                    warn(msg + "\nInfeasible instances removed from output.")
+                    x = x[feasible]
+                    centers = centers[feasible]
+                    c_assign = c_assign[feasible]
+                    bs = feasible.sum()
+
+            # at least one init produced a feasible assignment
+            # replace infeasible inits with feasible dummies to compute inertia
+            feasible = (c_assign >= 0).all(-1)
+            valid, dummy_row_idx = first_nonzero(feasible)
+            assgn = (
+                c_assign[torch.arange(bs, device=x.device), dummy_row_idx][:, None, :]
+                .expand(c_assign.size())
+                .contiguous()
+            )
+            assgn[feasible] = c_assign[feasible]
+            c_assign = assgn
 
         inertia = self._calculate_inertia(x, centers, c_assign)
         best_init = torch.argmin(inertia, dim=-1)

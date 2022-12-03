@@ -167,6 +167,8 @@ def test_input_data_raise2():
     "key,val",
     [
         ("init_method", "rnd"),
+        ("init_method", "k-means++"),
+        ("init_method", "ckm++"),
         ("num_init", 4),
         ("p_norm", 1),
         ("normalize", "mean"),

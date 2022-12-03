@@ -2,8 +2,10 @@
 from typing import Any, Optional, Tuple, Union
 from warnings import warn
 
+import numpy as np
 import torch
 import torch.nn as nn
+from sklearn.cluster._kmeans import _kmeans_plusplus, row_norms
 from torch import LongTensor, Tensor
 
 from ..utils.distances import (
@@ -31,8 +33,8 @@ class KMeans(nn.Module):
 
 
     Args:
-            init_method: Method to initialize cluster centers.
-                        Currently only supports random initialization ('rnd')
+            init_method: Method to initialize cluster centers ['rnd', 'k-means++']
+                            (default: 'rnd')
             num_init: Number of different initial starting configurations,
                         i.e. different sets of initial centers (default: 8).
             max_iter: Maximum number of iterations (default: 100).
@@ -52,7 +54,7 @@ class KMeans(nn.Module):
             **kwargs: additional key word arguments for the distance function.
     """
 
-    INIT_METHODS = ["rnd"]
+    INIT_METHODS = ["rnd", "k-means++"]
     NORM_METHODS = ["mean", "minmax", "unit"]
 
     def __init__(
@@ -346,7 +348,7 @@ class KMeans(nn.Module):
         return self(x, k=k, centers=centers, **kwargs).labels
 
     @torch.no_grad()
-    def _center_init(self, x: Tensor, k: LongTensor, **kwargs):
+    def _center_init(self, x: Tensor, k: LongTensor, **kwargs) -> Tensor:
         """Wrapper to apply different methods for
         initialization of initial centers (centroids)."""
         if self.init_method == "rnd":
@@ -380,7 +382,7 @@ class KMeans(nn.Module):
             raise ValueError(f"unknown normalization type {normalize}.")
         return x
 
-    def _init_rnd(self, x: Tensor, k: LongTensor):
+    def _init_rnd(self, x: Tensor, k: LongTensor) -> Tensor:
         """Choose k random nodes as initial centers.
 
         Args:
@@ -415,9 +417,38 @@ class KMeans(nn.Module):
             index=rnd_idx.view(bs, -1)[:, :, None].expand(bs, -1, d), dim=1
         ).view(bs, self.num_init, k_max, d)
 
-    def _init_plus(self, x: Tensor, k: LongTensor):
-        # https://github.com/scikit-learn/scikit-learn/blob/2beed55847ee70d363bdbfe14ee4401438fba057/sklearn/cluster/_kmeans.py#L50
-        raise NotImplementedError
+    def _init_plus(self, x: Tensor, k: LongTensor) -> Tensor:
+        """Choose initial centers via kmeans++ method.
+        https://github.com/scikit-learn/scikit-learn/blob/2beed55847ee70d363bdbfe14ee4401438fba057/sklearn/cluster/_kmeans.py#L50
+
+        Args:
+            x: (BS, N, D)
+            k: (BS, )
+
+        Returns:
+            centers: (BS, num_init, k, D)
+
+        """
+        bs, n, d = x.size()
+        k_max = torch.max(k).cpu().item()
+        rs = np.random.RandomState(self.seed if self.seed is not None else 1)
+        device = x.device
+        x = x.cpu().numpy()
+        k = k.cpu().numpy()
+        centers = []
+        for smp, nc in zip(x, k):
+            center_inits = []
+            x_squared_norms = row_norms(smp, squared=True)
+            for i in range(self.num_init):
+                c = np.zeros((k_max, d))
+                c_init, _ = _kmeans_plusplus(
+                    smp, nc, random_state=rs, x_squared_norms=x_squared_norms
+                )
+                c[:nc] = c_init
+                center_inits.append(c)
+            centers.append(torch.from_numpy(np.stack(center_inits)))
+
+        return torch.stack(centers).to(device)
 
     @torch.no_grad()
     def _cluster(
