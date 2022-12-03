@@ -347,7 +347,7 @@ class ConstrainedKMeans(KMeans):
             if not feasible.all():
                 inf_idx = (feasible == 0).nonzero().squeeze()
                 msg = (
-                    f"No feasible assignment found for {len(inf_idx)} "
+                    f"No feasible assignment found for "
                     f"instance(s) with idx: {inf_idx}.\n"
                     f"(Try to increase the number of clusters "
                     f"or loosen the constraints.)"
