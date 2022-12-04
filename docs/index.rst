@@ -71,8 +71,7 @@ Contents
    :maxdepth: 3
    :caption: Package Reference
 
-   api/torch_kmeans
-
+   api/modules
 
 
 Indices and tables
