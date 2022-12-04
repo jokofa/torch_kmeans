@@ -59,13 +59,6 @@ Simply install from PyPI
 Contents
 ========
 
-..    .. toctree::
-       :maxdepth: 2
-       Contributions & Help <contributing>
-       Changelog <changelog>
-       Module Reference <api/modules>
-
-
 .. toctree::
    :maxdepth: 1
 
@@ -75,11 +68,11 @@ Contents
 
 .. toctree::
    :glob:
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Package Reference
 
-   api/torch_kmeans.clustering
-   api/torch_kmeans.utils
+   api/torch_kmeans
+
 
 
 Indices and tables
