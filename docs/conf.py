@@ -44,7 +44,7 @@ except FileNotFoundError:
 try:
     import sphinx
 
-    cmd_line = f"sphinx-apidoc --implicit-namespaces -f -o {output_dir} {module_dir} -e -E -M -d 2"
+    cmd_line = f"sphinx-apidoc --implicit-namespaces -f -o {output_dir} {module_dir} -e -M -d 3"
 
     args = cmd_line.split(" ")
     if tuple(sphinx.__version__.split(".")) >= ("1", "7"):
