@@ -2,10 +2,8 @@
 from typing import Any, Optional, Tuple, Union
 from warnings import warn
 
-import numpy as np
 import torch
 import torch.nn as nn
-from sklearn.cluster._kmeans import _kmeans_plusplus, row_norms
 from torch import LongTensor, Tensor
 
 from ..utils.distances import (
@@ -15,6 +13,9 @@ from ..utils.distances import (
     LpDistance,
 )
 from ..utils.utils import ClusterResult, group_by_label_mean
+
+# import numpy as np
+# from sklearn.cluster._kmeans import _kmeans_plusplus, row_norms
 
 __all__ = ["KMeans"]
 
@@ -417,7 +418,7 @@ class KMeans(nn.Module):
             index=rnd_idx.view(bs, -1)[:, :, None].expand(bs, -1, d), dim=1
         ).view(bs, self.num_init, k_max, d)
 
-    def _init_plus(self, x: Tensor, k: LongTensor) -> Tensor:
+    def _init_skl_plus(self, x: Tensor, k: LongTensor) -> Tensor:
         """Choose initial centers via kmeans++ method.
         https://github.com/scikit-learn/scikit-learn/blob/2beed55847ee70d363bdbfe14ee4401438fba057/sklearn/cluster/_kmeans.py#L50
 
@@ -429,26 +430,88 @@ class KMeans(nn.Module):
             centers: (BS, num_init, k, D)
 
         """
+        raise NotImplementedError
+        # would require sklearn as additional dependency
+
+        # bs, n, d = x.size()
+        # k_max = torch.max(k).cpu().item()
+        # rs = np.random.RandomState(self.seed if self.seed is not None else 1)
+        # device = x.device
+        # x = x.cpu().numpy()
+        # k = k.cpu().numpy()
+        # centers = []
+        # for smp, nc in zip(x, k):
+        #     center_inits = []
+        #     x_squared_norms = row_norms(smp, squared=True)
+        #     for i in range(self.num_init):
+        #         c = np.zeros((k_max, d))
+        #         c_init, _ = _kmeans_plusplus(
+        #             smp, nc, random_state=rs, x_squared_norms=x_squared_norms
+        #         )
+        #         c[:nc] = c_init
+        #         center_inits.append(c)
+        #     centers.append(torch.from_numpy(np.stack(center_inits)))
+        #
+        # return torch.stack(centers).to(device)
+
+    def _init_plus(self, x: Tensor, k: LongTensor) -> Tensor:
+        """Choose initial centers via k-means++ method
+
+        Args:
+            x: (BS, N, D)
+            k: (BS, )
+
+        Returns:
+            centers: (BS, num_init, k, D)
+
+        """
         bs, n, d = x.size()
         k_max = torch.max(k).cpu().item()
-        rs = np.random.RandomState(self.seed if self.seed is not None else 1)
-        device = x.device
-        x = x.cpu().numpy()
-        k = k.cpu().numpy()
-        centers = []
-        for smp, nc in zip(x, k):
-            center_inits = []
-            x_squared_norms = row_norms(smp, squared=True)
-            for i in range(self.num_init):
-                c = np.zeros((k_max, d))
-                c_init, _ = _kmeans_plusplus(
-                    smp, nc, random_state=rs, x_squared_norms=x_squared_norms
-                )
-                c[:nc] = c_init
-                center_inits.append(c)
-            centers.append(torch.from_numpy(np.stack(center_inits)))
 
-        return torch.stack(centers).to(device)
+        if self.seed is not None:
+            # make random init reproducible independent of current iteration,
+            # which otherwise would step and change the torch generator state
+            gen = torch.Generator(device=x.device)
+            gen.manual_seed(self.seed)
+        else:
+            gen = None
+
+        bsm = bs * self.num_init
+        bsm_idx = torch.arange(bsm, device=x.device)
+        centers = torch.empty((bsm, k_max, d), dtype=x.dtype, device=x.device)
+
+        # select first center randomly
+        assert n > self.num_init, (
+            f"Number of samples must be larger than <num_init> "
+            f"but got {n} <= {self.num_init}"
+        )
+        idx = torch.multinomial(
+            torch.empty((bs, n), device=x.device, dtype=x.dtype).fill_(1 / n),
+            num_samples=self.num_init,
+            replacement=False,
+            generator=gen,
+        )
+        centers[:, 0] = x.gather(index=idx[:, :, None].expand(-1, -1, d), dim=1).view(
+            -1, d
+        )
+        msk = torch.zeros((bsm, n, k_max), dtype=torch.bool, device=x.device)
+        msk[bsm_idx, idx.view(-1), 0] = True
+
+        # select the remaining k-1 centers
+        for nc in range(1, k_max):
+            dist = self._pairwise_distance(
+                x, centers[:, :nc].view(bs, self.num_init, -1, d)
+            ).view(bsm, n, nc)
+            pot = dist**2
+            pot[msk[:, :, :nc]] = 0
+            pot = pot.min(dim=-1).values
+            idx = torch.multinomial(pot, 1, generator=gen).view(bs, self.num_init)
+            centers[:, nc] = x.gather(
+                index=idx[:, :, None].expand(-1, -1, d), dim=1
+            ).view(-1, d)
+            msk[bsm_idx, idx.view(-1), nc] = True
+
+        return centers.view(bs, self.num_init, k_max, d)
 
     @torch.no_grad()
     def _cluster(
